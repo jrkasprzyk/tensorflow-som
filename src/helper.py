@@ -7,7 +7,8 @@ from tfsom import SelfOrganizingMap
 from umatrix import get_umatrix_optimized
 
 
-def create_som(input_data, dims, num_inputs, batch_size=128, m=20, n=20):
+def create_som(input_data, dims, num_inputs, batch_size=128, num_rows_neurons=20, num_cols_neurons=20, max_epochs=100,
+               weights_init=None):
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s'
@@ -21,9 +22,14 @@ def create_som(input_data, dims, num_inputs, batch_size=128, m=20, n=20):
                 allow_soft_placement=True,
                 log_device_placement=False))
 
-        # Scale the data for easier training. Also index 0 because the output is a (data, label) tuple.
+        # scale the data
         scaler = StandardScaler()
-        input_data = scaler.fit_transform(input_data[0])
+
+        # Old version used index 0 because the output is a (data, label) tuple
+        #input_data = scaler.fit_transform(input_data[0])
+
+        # New version assumes you'll only be inputting the data to this function
+        input_data = scaler.fit_transform(input_data) # CRB data is in matrix form?
 
         # Build the TensorFlow dataset pipeline per the standard tutorial.
         dataset = tf.data.Dataset.from_tensor_slices(input_data.astype(np.float32))
@@ -34,17 +40,18 @@ def create_som(input_data, dims, num_inputs, batch_size=128, m=20, n=20):
 
         # Build the SOM object and place all of its ops on the graph
         som = SelfOrganizingMap(
-            m=m,
-            n=n,
+            num_rows_neurons=num_rows_neurons,
+            num_cols_neurons=num_cols_neurons,
             dim=dims,
-            max_epochs=2,
+            max_epochs=max_epochs,
             gpus=1,
             session=session,
             graph=graph,
             input_tensor=next_element,
             batch_size=batch_size,
             initial_learning_rate=0.1,
-            weights_init=None
+            input_dataset=input_data,
+            weights_init=weights_init
         )
 
         init_op = tf.compat.v1.global_variables_initializer()
@@ -59,6 +66,6 @@ def create_som(input_data, dims, num_inputs, batch_size=128, m=20, n=20):
 
         weights = som.output_weights
 
-        umatrix, bmu_loc = get_umatrix_optimized(som, input_data, weights, m, n)
+        umatrix, bmu_loc = get_umatrix_optimized(som, input_data, weights, num_rows_neurons, num_cols_neurons)
 
     return som, umatrix, bmu_loc

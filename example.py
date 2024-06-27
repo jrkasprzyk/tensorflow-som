@@ -11,6 +11,9 @@ def main():
     dims = 5
     clusters = 6
 
+    # TODO since make_blobs can output an X and a Y, we should do that
+    # and just ignore Y ... that way we don't have to have the [0] dimension
+    # in the function
     blob_data = make_blobs(
         n_samples=num_inputs,
         n_features=dims,
@@ -25,8 +28,8 @@ def main():
         dims=dims,
         num_inputs=num_inputs,
         batch_size=128,
-        m=m,
-        n=n
+        num_rows_neurons=m,
+        num_cols_neurons=n
     )
 
     # plot results

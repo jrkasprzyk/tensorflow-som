@@ -39,11 +39,12 @@ https://codesachin.wordpress.com/2015/11/28/self-organizing-maps-with-googles-te
 
 
 # Trying to divorce from tfp since it is not compatible with Keras 3
+# using algorithm from the below post, but modified for modern tf
 # https://stackoverflow.com/questions/47709854/how-to-get-covariance-matrix-in-tensorflow
 def tf_conv(x):
     x = x - tf.expand_dims(tf.reduce_mean(x, axis=1), 1)
-    fact = tf.cast(tf.shape(x)[1] - 1, tf.float32)
-    return tf.matmul(x, tf.conj(tf.transpose(x))) / fact
+    fact = tf.cast(tf.shape(x)[1] - 1, tf.float64)
+    return tf.linalg.matmul(x, tf.math.conj(tf.transpose(x))) / fact
 
 
 class SelfOrganizingMap:
@@ -51,14 +52,14 @@ class SelfOrganizingMap:
     2-D rectangular grid planar Self-Organizing Map with Gaussian neighbourhood function
     """
 
-    def __init__(self, m, n, dim, max_epochs=100, initial_radius=None, batch_size=128, initial_learning_rate=0.1,
+    def __init__(self, num_rows_neurons, num_cols_neurons, dim, max_epochs=100, initial_radius=None, batch_size=128, initial_learning_rate=0.1,
                  graph=None, std_coeff=0.5, model_name='Self-Organizing-Map', softmax_activity=False, gpus=0,
                  output_sensitivity=-1.0, input_tensor=None, input_dataset=None, session=None, checkpoint_dir=None,
                  restore_path=None, weights_init=None):
         """
         Initialize a self-organizing map on the tensorflow graph
-        :param m: Number of rows of neurons
-        :param n: Number of columns of neurons
+        :param num_rows_neurons: Number of rows of neurons
+        :param num_cols_neurons: Number of columns of neurons
         :param dim: Dimensionality of the input data
         :param max_epochs: Number of epochs to train for
         :param initial_radius: Starting value of the neighborhood radius - defaults to max(m, n) / 2.0
@@ -76,11 +77,11 @@ class SelfOrganizingMap:
         :param input_dataset: holds the complete dataset, often used for PCA
         :param weights_init: HCV = Hilber Curve init, PCA = Principal Component Analysis
         """
-        self._m = abs(int(m))
-        self._n = abs(int(n))
+        self._m = abs(int(num_rows_neurons))
+        self._n = abs(int(num_cols_neurons))
         self._dim = abs(int(dim))
         if initial_radius is None:
-            self._initial_radius = max(m, n) / 2.0
+            self._initial_radius = max(num_rows_neurons, num_cols_neurons) / 2.0
         else:
             self._initial_radius = float(initial_radius)
         self._max_epochs = abs(int(max_epochs))
@@ -219,7 +220,8 @@ class SelfOrganizingMap:
 
             #PCA INIT
             if self._weights_init == "PCA":
-                self._weights = self._pca_weights_init()
+                # JRK: Fixed error where dataset wasn't passed in here
+                self._weights = self._pca_weights_init(self._input_dataset)
             #HILBERT INIT
             elif self._weights_init == "HCV":
                 self._weights = self._hcv_weight_init(2)
